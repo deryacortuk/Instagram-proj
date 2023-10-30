@@ -1,0 +1,156 @@
+version: "3.11"
+services:     
+    redis:
+      image: redis:7.2-alpine   
+      container_name: redis
+      restart: always  
+      ports:
+        - "6379:6379"
+      networks:
+        - web_network
+      environment:      
+        - REDIS_DB_JOBSTORE=1
+        - REDIS_DB_FSM=1
+      
+        
+      
+    nginx:    
+      image: nginx:1.25-alpine
+      restart: always           
+      ports:
+         - "8080:8000"
+       
+       
+      container_name: nginx       
+      volumes:  
+        - ./bin/nginx.conf:/etc/nginx/nginx.conf    
+        - static-data:/app/staticfiles
+        - media-data:/app/media    
+        - ./ssl:/etc/ssl/certs
+        - ./logs:/app/logs
+        
+                          
+      depends_on:
+        - web   
+      networks:
+        - web_network    
+   
+    pgdb:
+      image: postgres:16-alpine     
+      container_name: postgres_db         
+      restart : always       
+                                          
+      environment:
+          - POSTGRES_USER=${POSTGRES_USER}
+          - POSTGRES_DB=${POSTGRES_DB}
+          - POSTGRES_PASSWORD=${POSTGRES_PASSWORD} 
+          - POSTGRES_HOST=pgdb
+          - POSTGRES_PORT=${POSTGRES_PORT}
+         
+                         
+      volumes:
+          - pg-data:/var/lib/postgresql/data                
+          - ./logs:/app/logs  
+          
+      ports:
+          - 5432   
+      env_file:
+          - .env
+      networks:
+        - web_network
+    
+
+    
+    stripe-cli:
+      image:  stripe/stripe-cli
+      container_name: stripe-cli 
+      restart: always
+      command: "listen --api-key ${STRIPE_API_KEY} --device-name ${STRIPE_DEVICE_NAME} --forward-to web:8000/payment/webhook/"
+      environment:
+        - STRIPE_API_KEY=${STRIPE_API_KEY}
+        - STRIPE_DEVICE_NAME=${STRIPE_DEVICE_NAME}
+        - ALLOWED_HOSTS=${ALLOWED_HOSTS}  
+        - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET} 
+        - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      env_file:
+        - .env
+      depends_on:
+        - web   
+      networks:
+        - web_network
+                                            
+        
+        
+         
+      
+    
+    web:
+      build: 
+        context: .                    
+      container_name: web      
+      restart: always      
+      command: bash -c "sh /app/bin/docker_start.sh"      
+      ports:
+        - "8000:8000"       
+      volumes:       
+        - static-data:/app/staticfiles
+        - media-data:/app/media
+        - ./logs:/app/logs             
+        - ./bin:/app/bin
+        - .:/app
+        - ./ssl:/etc/ssl/certs
+        
+        
+      
+        
+      environment: 
+        - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}        
+        - SECRET_KEY=${SECRET_KEY}  
+        - DATABASE_ENGINE=${DATABASE_ENGINE}
+        - DATABASE_NAME=${POSTGRES_DB}
+        - DATABASE_USER=${POSTGRES_USER}
+        - DATABASE_PASSWORD=${POSTGRES_PASSWORD}     
+        - DATABASE_HOST=pgdb                         
+        - EMAIL_HOST=${EMAIL_HOST}
+        - EMAIL_PORT=${EMAIL_PORT}
+        - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+        - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}   
+        - EMAIL_BACKEND=${EMAIL_BACKEND}
+        - ALLOWED_HOSTS=${ALLOWED_HOSTS}        
+        - EMAIL_USE_TLS=True
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
+        - CELERY_BROKER=${CELERY_BROKER}
+        - CELERY_BACKEND=${CELERY_BACKEND}
+        - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+        - STRIPE_DEVICE_NAME=${STRIPE_DEVICE_NAME}
+        - C_FORCE_ROOT=True
+        
+       
+    
+      depends_on:
+        - pgdb
+        - redis    
+
+      env_file:
+        - .env
+      networks:
+        - web_network
+
+
+
+      
+    
+networks:
+  web_network:
+    name: web_network
+    driver: bridge
+    external: false     
+           
+         
+volumes:
+ 
+  static-data:
+  media-data:
+  pg-data: 
