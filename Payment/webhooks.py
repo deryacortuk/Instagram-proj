@@ -47,9 +47,10 @@ def stripe_webhook(request):
                 product = get_object_or_404(ServiceProduct, id= item.product.id)                 
                               
                 service_search.quantity += product.quantity
+                service_search.status = product.name
                 service_search.save()                               
                                                                                 
             order.save() 
-            # payment_completed.delay(order.id)            
+            payment_completed.delay(order.id)            
                 
     return HttpResponse(status=200)
