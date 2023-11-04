@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+
+      <div class="container-xxl py-5 bg-primary hero-header">
+                <div class="container" >
+                   
+                </div>
+            </div> 
+        </div>
+    <div class="container-xxl py-5">
+            <div class="container px-lg-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-7">
+                     
+                        <div class="wow" >
+                            <form action="{% url 'payment:process' %}" method="post">
+
+ {% csrf_token %}
+ <input type="submit" value="Pay now" class="btn btn-primary w-100 py-3" align="center" style ="width: 100%;border-radius: 40px;font-size: 30px;border-color:#4777F5; background-color:#4777F5;text-align:center;">
+ </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+{% endblock body %}

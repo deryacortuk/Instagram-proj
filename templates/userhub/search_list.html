@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+
+
+            <style>
+       * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+
+    .posts-container {
+        margin: auto;
+        max-width: 1200px;
+        display: flex;
+        flex-wrap: wrap;
+        background-color: #f6f6f6;
+        padding: 1rem;
+    }
+
+    .posts-container .product {
+        flex: 0 0 50%;
+        padding: 0 1rem;
+    }
+
+    .posts-container .product .bg-white {
+        background-color: white;
+        box-shadow: 0px 0px 15px 5px #ddd;
+        height: 100%;
+    }
+
+    .posts-container .product h1 {
+        font-size: 1rem;
+        padding: 0.5rem 1rem .1rem 0;
+        border-bottom: 2px solid brown;
+        display: inline-block;
+        margin: 0 0 .5rem .5rem;
+        text-transform: uppercase;
+    }
+
+    .posts-container .product p {
+        font-size: 1rem;
+        padding: 0 1rem 0.5rem 0.5rem
+    }
+
+
+    </style>
+
+
+      <div class="container-xxl py-5 bg-primary hero-header">
+                <div class="container" >
+                   
+                </div>
+            </div> 
+        </div>
+        <br> <br>
+        <h2 class="text-primary" align="center">Instagram Profile Analysis List</h2>
+ {% if search_list %}
+
+  <br>
+   <div class="posts-container">
+
+    <table class="table table-table-responsive-sm table-info table-hover">
+  <thead>
+    <tr>
+      <th scope="col">Created</th>
+      <th scope="col">Profile Analyze</th>
+      <th scope="col"></th>
+      <th scope="col">Export JSON</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in search_list  %}
+    <tr>
+      <th><h6>{{user.updated_at|date:'d M, Y'}}</h6></th>
+      <td><h5>  <a href="{% url 'userhub:analysis' user.instagram_user %}" target="_blank">{{user.instagram_user}}</a> </h5></td>
+      <td><h5><a href="" target="_blank"></a> </h5></td>
+      {% if user.status_code == "pro" %}
+      <td><h5>  <a href="{% url 'userhub:download' user.instagram_user %}" target="_blank">{{user.instagram_user}}</a> </h5></td>
+   {% else %}
+    <td><h5>  <a></a> </h5></td>
+      {% endif %}
+      
+    
+      
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+       
+       
+
+    
+                        
+  
+</div>
+{% else %}
+<br>
+<h3 align="center">You haven't got Instagram profile analysis list yet.</h3>
+  <br>
+{% endif %}
+
+
+{% endblock body %}

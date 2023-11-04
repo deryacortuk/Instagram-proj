@@ -1,0 +1,18 @@
+{% autoescape off %}
+Dear {{ user.first_name }}, 
+
+Thank you for signing up with XLookin. We're delighted to have you on board!
+
+To complete your registration, please click on the link below to activate your account:
+
+http://{{ domain }}{% url 'account:activate' uidb64=uid token=token %}
+
+Once activated, you will have access to our full range of features. If you have any questions or need assistance with the activation process, please don't hesitate to contact us.
+
+Thank you for choosing XLookin, we look forward to serving you.
+
+Best regards,
+XLookin
+
+
+{% endautoescape %}

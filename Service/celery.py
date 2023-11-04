@@ -9,7 +9,7 @@ env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file_
 dotenv.load_dotenv(env_file)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Service.settings")
-app = Celery("Service",broker='redis://localhost:6379/0')
+app = Celery("Service",broker='redis://redis:6379/0')
 
 app.config_from_object("django.conf:settings",namespace="CELERY")
 app.conf.enable_utc=True

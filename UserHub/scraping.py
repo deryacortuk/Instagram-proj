@@ -5,29 +5,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from time import sleep
 import random
-import ast
 from concurrent.futures import ThreadPoolExecutor
-import json
 import re
-from .helper import find_hashtags, find_usernames,str_to_int
+from UserHub.helper import find_hashtags, find_usernames,str_to_int
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
-
+from UserHub.storages import upload_to_s3, read_json_from_s3
     
-import time
-
-
-
-
-user = [
-    ("sellorbuy.shop","17derya17@"),("oceanangel.ai","17ocean7@")
-]
-
-
-random_user = random.choice(user)
-
 def login_instagram():
-    print(random_user)
+    user = [("sellorbuy.shop","17derya17@"),("oceanangel.ai","17ocean7@")]   
+    random_user = random.choice(user)
     url = "https://www.instagram.com/"      
     options = Options()     
     options.add_argument('--headless=new')    
@@ -42,40 +29,44 @@ def login_instagram():
     options.add_argument('--no-sandbox')
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--allow-running-insecure-content')   
+    options.add_argument('--ignore-ssl-errors=yes')
+    
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/95.0.4638.69 Safari/537.36")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub',options=options)
     driver.get(url)
-    sleep(2)
-    user = driver.find_element(By.NAME, "username")
-    
-    user.send_keys(random_user[0])
-    
-    pwrd = driver.find_element(By.NAME,"password")
-    
-    pwrd.send_keys(random_user[1])
-       
-    driver.find_element(By.XPATH,'//*[@id="loginForm"]/div/div[3]/button/div').click()
     sleep(5)
-    driver.find_element(By.XPATH, '//section/main/div/div/div/div/div').click()
-    sleep(2)
-    driver.find_element(By.CSS_SELECTOR, 'body > div.x1n2onr6.xzkaem6 > div.x9f619.x1n2onr6.x1ja2u2z > div > div.x1uvtmcs.x4k7w5x.x1h91t0o.x1beo9mf.xaigb6o.x12ejxvf.x3igimt.xarpa2k.xedcshv.x1lytzrv.x1t2pt76.x7ja8zs.x1n2onr6.x1qrby5j.x1jfb8zj > div > div > div > div > div.x7r02ix.xf1ldfh.x131esax.xdajt7p.xxfnqb6.xb88tzc.xw2csxc.x1odjw0f.x5fp0pe > div > div > div._a9-z > button._a9--._a9_1').click()
-    sleep(1)
+    try:
+        user = driver.find_element(By.NAME, "username")
     
-    return driver    
-async def get_reels(username,driver):    
+        user.send_keys(random_user[0])
+    
+        pwrd = driver.find_element(By.NAME,"password")
+    
+        pwrd.send_keys(random_user[1])
+       
+        driver.find_element(By.XPATH,'//*[@id="loginForm"]/div/div[3]/button/div').click()
+        sleep(5)
+        return driver
+    except NoSuchElementException:        
+        print("Element was not found!")       
+        driver.quit()
+        return 
+    except Exception as e:
+                                        
+        driver.quit()
+        return 
+    except TimeoutException:
+        driver.quit()
+        return      
+    
+    
+    
+
+async def get_reels(username,driver,user):    
     await asyncio.sleep(1)
     url = f"https://www.instagram.com/{username}/reels"     
-    driver.get(url)  
-    
-                 
-    try:
-        user_account = driver.find_element(By.CSS_SELECTOR,"section > main > div > div._aady._aa_s > div > h2")
-        if user_account:
-            
-            return "This Account is Private"
-    except NoSuchElementException:
-        print("Element was not found!")
-    
+    driver.get(url)      
+    sleep(5)               
     reels_urls = []
     last_height = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);var scrolldown=document.body.scrollHeight;return scrolldown;")
     sleep(3)
@@ -144,37 +135,56 @@ async def get_reels(username,driver):
         if last_count==last_height:
             break                 
     
-    with open(f"userHubData/{username}-reels-data.json","w", encoding="utf-8") as file:
-        json_data = json.dumps(reels_urls, indent=4)                
-        file.write(json_data)
-    
+    file_name = f"{user}-{username}-reels-data"
+    upload_to_s3(reels_urls, file_name)
+
     return "Data was uploaded!"
 
 
+def check_account(username):
+    url = f"https://www.instagram.com/{username}/"      
+    options = Options()     
+    options.add_argument('--headless=new')    
+    options.add_argument("start-maximized")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--proxy-server='direct://'")
+    options.add_argument("--proxy-bypass-list=*")
+    options.add_argument("--start-maximized")    
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--ignore-ssl-errors=yes')
+    options.add_argument('--allow-running-insecure-content')   
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/95.0.4638.69 Safari/537.36")
+    driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub',options=options)
+    driver.get(url)
+    sleep(1)
+    try:
+        user_account = driver.find_element(By.CSS_SELECTOR,"section > main > div > div._aady._aa_s > div > h2")
+        driver.quit()
+        return "This Account is Private"
+    except NoSuchElementException:
+        try:
+            check_account = driver.find_element(By.CSS_SELECTOR,"section > main > div > div > span")
+            print(check_account.text)
+            driver.quit()
+            return "Sorry, this page isn't available"
+        except NoSuchElementException:
+            driver.quit()
+            return "This account is public"
 
-
-async def get_instagram(username,driver):   
+async def get_instagram(username,driver,user):   
     await asyncio.sleep(1) 
     url = f"https://www.instagram.com/{username}/"           
        
     driver.get(url)
-    sleep(1)
-    try:
-         user_account = driver.find_element(By.CSS_SELECTOR,"section > main > div > div._aady._aa_s > div > h2")
-         if user_account:
-             print(user_account.text)
-             return "This Account is Private"
-    except NoSuchElementException:
-         print("Element was not found!")    
-    
+    sleep(5)          
     profile = {}
-    div_element = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.CSS_SELECTOR,'.x7a106z'))) #driver.find_element(By.CSS_SELECTOR,'.x7a106z')
+    div_element = WebDriverWait(driver,5).until(EC.presence_of_element_located((By.CSS_SELECTOR,'.x7a106z'))) 
     span_info = div_element.find_element(By.CSS_SELECTOR,'span')
-    try:
-        h1_element = div_element.find_element(By.CSS_SELECTOR,'h1')
-        profile["public_figure"] =h1_element.text
-    except NoSuchElementException:
-        print("Element was not found!")    
+    
     
     profile["username"] = username
     profile["full_name"] = span_info.text
@@ -230,17 +240,16 @@ async def get_instagram(username,driver):
     user_data["profile"] = profile                  
     
     user_data["posts"] = infos    
-    with open(f"userHubData/{username}-posts.json","w", encoding="utf-8") as file:
-        json_data = json.dumps(user_data,indent=4,ensure_ascii=False)                
-        file.write(json_data)            
+    file_name = f"{user}-{username}-posts"
+    upload_to_s3(user_data,file_name)
     
     return "Data was uploaded!"
 
-async def scrape_website(username):
+async def scrape_website(username,user):
     driver = login_instagram()
     instagram_result, reels_result =await asyncio.gather(
-        get_instagram(username, driver),
-        get_reels(username,driver)
+        get_instagram(username, driver,user),
+        get_reels(username,driver,user)
     )
     driver.quit()
     return instagram_result
@@ -259,6 +268,7 @@ def get_posts(url):
     options.add_argument('--no-sandbox')
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--allow-running-insecure-content')
+    options.add_argument('--ignore-ssl-errors=yes')
     options.add_argument('--log-level=1')        
       
     
@@ -267,8 +277,8 @@ def get_posts(url):
     "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.34 (KHTML, like Gecko) Version/11.0 Mobile/15A5341f Safari/604.1"
 }   
     options.add_experimental_option("mobileEmulation", mobile_emulation)  
-    driver = webdriver.Chrome(options=options)   
-    # driver.set_page_load_timeout(20)
+    driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub',options=options)
+
     driver.get(url)
     sleep(2)
     posts = dict()                   
@@ -277,23 +287,24 @@ def get_posts(url):
 
     try:                                 
         user_post = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div:nth-child(1) > div > article._aa6a._aatb._aatd._aatf')))                
-        usernme = WebDriverWait(user_post, 2).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x12nagc.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.xdt5ytf.xqjyukv.x1qjc9v5.x1oa3qoh.x1nhvcw1 > div > a > div > div > span")))                
+       
         
         post_time = WebDriverWait(user_post, 2).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div._akdp > div > div > a > span > time')))       
        
         posts["time"] = post_time.text
-        username = usernme.text   
+        
         post_title = WebDriverWait(user_post, 2).until(EC.presence_of_element_located((By.TAG_NAME,"h1")))             
         posts["title"] = post_title.text           
         posts["hashtags"] = find_hashtags(post_title.text)
         posts["tags"] = find_usernames(post_title.text)    
+        posts["engagement_rate"] = 0
         try:
             
             post_comments = WebDriverWait(user_post, 2).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.x9f619.xjbqb8w.x78zum5.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x12nagc.x1n2onr6.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.xdt5ytf.xqjyukv.x1cy8zhl.x1oa3qoh.x1nhvcw1 > a > span > span')))
             
             comments = str_to_int(post_comments.text)
             posts["comments"] = comments
-            posts["engagement_rate"] = comments
+            posts["engagement_rate"] += comments
         except NoSuchElementException:
             print("Element was not found!")
         
@@ -313,8 +324,7 @@ def get_posts(url):
                     posts["views"] = str_to_int(views)
                     
                         
-                    posts["engagement_rate"] += str_to_int(views) 
-                   
+                    posts["engagement_rate"] += str_to_int(views)                    
                         
                         
                 
@@ -329,24 +339,18 @@ def get_posts(url):
         except NoSuchElementException:
             print("Element was not found!")                  
                                            
+    except NoSuchElementException:        
+        print("Element was not found!")       
+    except Exception as e:
+        print(f"Error: {e}")                                   
     except TimeoutException:
         driver.quit()
-        return
-    except WebDriverException:
-        driver.quit()
-        return
-    except NoSuchElementException:
-        print("Element was not found!") 
-    except Exception as e:
-        print(f"Error: {e}")              
-        
+        return      
     
-    if username != None:
-        with open(f"userHubData/{username}-detail-posts.json","a+",encoding="utf-8") as file:
-            json_data = json.dumps(posts,indent=4,ensure_ascii=False)                
-            file.write(json_data + ",")
-   
+    
     driver.quit()                 
+    return posts
+    
     
 def chunk_urls(urls_list, chunk_size=10):                            
     for i in range(0, len(urls_list), chunk_size):
@@ -354,11 +358,11 @@ def chunk_urls(urls_list, chunk_size=10):
         
 
 
-def process_url(username):    
-    with open(f"userHubData/{username}-posts.json", "r",encoding='utf-8') as file:
-        user_data = json.load(file)                    
-    if "posts" not in user_data:
-         return "Posts were not in user data!"    
+def process_url(username,user):    
+    
+    file = f"{user}-{username}-posts"
+    
+    user_data = read_json_from_s3(file)    
     posts = user_data["posts"]
     posts_url = [item["url"] for item in posts]    
     urls_lists = list()    
@@ -366,14 +370,27 @@ def process_url(username):
         urls_lists = posts_url[:100]
     else:        
         urls_lists = posts_url            
+    
     url_chunks = list(chunk_urls(urls_lists, chunk_size=10))    
+    all_posts = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         
         for chunk in url_chunks:
             chunk_results = list(executor.map(get_posts, chunk))
             sleep(1)
     
+            for result in chunk_results:
+                
+                if result != None:
+                    
+                    all_posts.append(result)
+    
+    
+    file_name = f"{user}-{username}-detail-posts"
+    upload_to_s3(all_posts, file_name)
+    
     return "Process was completed successfully"
+    
 
 
 

@@ -6,10 +6,7 @@ ENV PYTHONUNBUFFERED 1
 
 ENV TZ=UTC
 
-WORKDIR  /app
-
-RUN apt-get update -y && apt-get install -y build-essential unzip vim git curl locales orca                          
-RUN apt-get install libpangocairo-1.0-0
+WORKDIR  /app                       
 
 RUN pip install --upgrade pip setuptools
 
@@ -20,8 +17,8 @@ RUN pip install --upgrade pip && \
   pip install gunicorn[gevent] && \
   pip cache purge
 
-
-COPY . /app/
+ADD . .
+COPY . /app
 
 COPY ./bin/nginx.conf /etc/nginx/nginx.conf
 
@@ -30,6 +27,7 @@ COPY ./bin/nginx.conf /etc/nginx/nginx.conf
 # ADD  ./ssl/dhparam.pem   /etc/ssl/certs
 
 RUN chmod  -R 755 /app
+RUN chmod +x  /app
 RUN chmod +x /app/bin/docker_start.sh
 
 ENTRYPOINT ["bash","/app/bin/docker_start.sh"]

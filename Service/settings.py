@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import dotenv
+from celery.schedules import crontab
 
 env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), '.env')
 
@@ -15,10 +16,12 @@ SECRET_KEY = "django-insecure-7^+8-$b0_qx&j8@2%0@va7r&ys2b8_i6#g*^z=n)!83uz=*32#
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# DEBUG =bool(int(os.environ.get('DEBUG',0)))
+
+ALLOWED_HOSTS = ['127.0.0.1','0.0.0.0','web']
 
 
-# Application definition
+
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -27,6 +30,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.sites',
+   'django.contrib.sitemaps',
     "Account.apps.AccountConfig",
     "UserHub.apps.UserhubConfig",
     "Product.apps.ProductConfig",
@@ -36,12 +41,18 @@ INSTALLED_APPS = [
      "Order.apps.OrderConfig",
       "Payment.apps.PaymentConfig",
        "compressor",
+       'django_celery_results',
+       'django_celery_beat',
       
 ]
+SITE_ID = 1
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
+FILE_UPLOAD_PERMISSIONS = 0o644
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -53,7 +64,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'django.middleware.http.ConditionalGetMiddleware',
+    #'django.middleware.http.ConditionalGetMiddleware',
 ]
 
 ROOT_URLCONF = "Service.urls"
@@ -92,15 +103,7 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
 
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
@@ -115,46 +118,45 @@ DATABASES = {
 # SESSION_COOKIE_AGE = 1209600
 # SESSION_SAVE_EVERY_REQUEST = True
 
-# DATABASES = {
+DATABASES = {
 
-#     'default': {
+    'default': {
 
-#         'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql',
 
-#         'NAME': os.environ.get("POSTGRES_DB"),
+        'NAME': os.environ.get("POSTGRES_DB"),
 
-#         'USER': os.environ.get("POSTGRES_USER"),
+        'USER': os.environ.get("POSTGRES_USER"),
 
-#         'PASSWORD':os.environ.get("POSTGRES_PASSWORD"),
+        'PASSWORD':os.environ.get("POSTGRES_PASSWORD"),
 
-#         'HOST': 'pgdb',
+        'HOST': 'pgdb',
 
-#         'PORT': os.environ.get("POSTGRES_POST"),
-#         'URL':os.environ.get('DATABASE_URL')
+        'PORT': os.environ.get("POSTGRES_POST"),
+        
 
-#     }
+    }
 
-# }
+}
 
-# AWS_S3_GZIP = True
-# STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-# AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-# AWS_SECRET_ACCESS_KEY =os.environ.get('AWS_SECRET_ACCESS_KEY')
-# AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-# AWS_DEFAULT_ACL = 'public-read'
-# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-# AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-# AWS_LOCATION = 'static'
-# STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
+AWS_S3_GZIP = True
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY =os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_DEFAULT_ACL = 'public-read'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+AWS_LOCATION = 'static'
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 
-# AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
-# AWS_S3_FILE_OVERWRITE=True
-# LOCATION ='media'
-# AWS_FILE_EXPIRE = 200
-# AWS_PRELOAD_METADATA = True
-# AWS_QUERYSTRING_AUTH = False
-# AWS_S3_VERIFY = True
-# DEFAULT_FILE_STORAGE = 'SellorBuy.storages.MediaStore'
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
+AWS_S3_FILE_OVERWRITE=False
+AWS_FILE_EXPIRE = 200
+AWS_PRELOAD_METADATA = True
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_VERIFY = True
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -190,19 +192,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
-
 STATIC_ROOT = os.path.join(BASE_DIR,"staticfiles")
 
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR,"static"),
-    
 )
+
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',   
     'compressor.finders.CompressorFinder',
 )
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -227,8 +231,8 @@ EMAIL_HOST_USER= os.environ.get("EMAIL_HOST_USER")
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-CELERY_BROKER_URL ="redis://localhost:6379/0" 
-CELERY_RESULT_BACKEND = 'redis://localhost:6379' 
+CELERY_BROKER_URL ="redis://redis:6379/0" 
+CELERY_RESULT_BACKEND = 'redis://redis:6379' 
 CELERY_ALWAYS_EAGER=True
 CELERY_ACCEPT_CONTENT =["json"]
 CELERY_TASK_SERIALIZER = "json"
@@ -244,6 +248,14 @@ CELERY_ACKS_LATE = True
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 CELERY_TASK_TRACK_STARTED = True
+CELERY_RESULT_BACKEND = "django-db"
+
+CELERY_BEAT_SCHEDULE = {
+    'update-status-every-hour': {
+        'task': 'UserHub.tasks.celery_cron_tasks', 
+        'schedule': crontab(hour="*/1"),
+    },
+}
 
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY") 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY") 
@@ -253,7 +265,7 @@ STRIPE_WEBHOOK_SECRET=os.environ.get("STRIPE_WEBHOOK_SECRET")
 REDIS_HOST="redis"
 REDIS_PORT=6379
 REDIS_DB =1
-CACHE_LOCATION="redis://localhost:6379"
+CACHE_LOCATION="redis://redis:6379"
 REDIS_DB_JOBSTORE=1
 REDIS_DB_FSM =1
 
@@ -262,7 +274,7 @@ CACHES = {
  "BACKEND": "redis_cache.RedisCache",
  "LOCATION": CACHE_LOCATION,
  "TIMEOUT": 60, 
- "KEY_PREFIX": "SellorBuy",
+ "KEY_PREFIX": "Service",
   'OPTIONS': {
             'DB': 1,           
             "CLIENT_CLASS": "django_redis.client.DefaultClient",

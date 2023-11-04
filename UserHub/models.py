@@ -14,11 +14,15 @@ class UserProfile(models.Model):
     
     
 class UserSearch(models.Model):
+    STATUS_CHOICES = (
+    ('basic','Basic'),('premium','Premium'),('pro','Pro')
+)  
     user = models.ForeignKey(User,on_delete=models.CASCADE, related_name="user_search")
     instagram_user = models.CharField(max_length=150)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.BooleanField(default=False)
+    status_code = models.CharField(choices=STATUS_CHOICES, default='basic',max_length=100)
     
     
     class Meta:

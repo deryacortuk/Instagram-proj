@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block body %}
+<div class="container-xxl py-5 bg-primary hero-header">
+                <div class="container" >
+                   
+                </div>
+            </div> 
+        </div>
+ <div class="container-xxl py-5">
+            <div class="container px-lg-5">
+                <div class="position-relative text-center mb-5 pb-2">
+                    <h3 class="position-relative d-inline text-primary ps-4">Login to XLookin</h3>
+                    
+                </div>
+                 <div class="row justify-content-md-center">
+                    <div class="col-md-auto">
+               <form  method="post" action="{% url 'account:login' %}">
+                 {% csrf_token %}
+                {{form|crispy}}
+                 <button type="submit"  style ="width: 100%;border-radius: 40px;font-size: 21px;background-color:#638BF7;color: white; border: none;">Login</button>   
+               </form>
+               <br>
+                <h6><a href="{% url 'account:signup' %}">Don't have an account yet? Sign up </a></h6>
+                <br>
+                 <h6>                               
+                  <a href="{% url 'password_reset' %}">Forgot password? </a></h6>  
+               </div>
+                
+               </div>
+            </div>
+        </div>
+      
+{% endblock body %}
